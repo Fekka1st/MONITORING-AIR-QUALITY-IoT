@@ -9,22 +9,9 @@
 #define RED_PIN 21     // Pin GPIO yang terhubung ke kaki merah LED RGB
 #define GREEN_PIN 19   // Pin GPIO yang terhubung ke kaki hijau LED RGB
 #define BLUE_PIN 18    // Pin GPIO yang terhubung ke kaki biru LED RGB
+#define BUZZER_PIN 22  // pin Buzzer
 
 DHT dht(DHT_PIN, DHT_TYPE);
-
-void readmq()
-{
-  int mq135Value = analogRead(MQ135_PIN); // Membaca nilai dari sensor MQ-135
-  int mq2Value = analogRead(MQ2_PIN);     // Membaca nilai dari sensor MQ-2
-
-  Serial.print("MQ-135: ");
-  Serial.println(mq135Value);
-
-  Serial.print("MQ-2: ");
-  Serial.println(mq2Value);
-
-  delay(1000); // Jeda 1 detik sebelum membaca nilai sensor lagi
-}
 
 void relay(int nilai)
 {
@@ -77,6 +64,7 @@ void lamprgb(int led)
 void setup()
 {
   Serial.begin(115200);
+  pinMode(BUZZER_PIN, OUTPUT);
   pinMode(RELAY_PIN, OUTPUT); // Mengatur pin relay sebagai output
   pinMode(MQ135_PIN, INPUT);  // Mengatur pin sensor MQ-135 sebagai input
   pinMode(MQ2_PIN, INPUT);    // Mengatur pin sensor MQ-2 sebagai input
@@ -85,47 +73,41 @@ void setup()
   pinMode(GREEN_PIN, OUTPUT); // Mengatur pin hijau sebagai output
   pinMode(BLUE_PIN, OUTPUT);  // Mengatur pin biru sebagai output
   digitalWrite(GREEN_PIN, HIGH);
+  noTone(BUZZER_PIN);
 }
 
 void qualityair()
 {
-  int mq135Value = analogRead(MQ135_PIN); // Membaca nilai dari sensor MQ-135
+  int sensorValue = analogRead(MQ135_PIN); // Membaca nilai dari sensor MQ-135
 
-  float o2Concentration = map(mq135Value, 0, 1023, 0, 100);  // Mengkonversi nilai menjadi konsentrasi O2
-  float co2Concentration = map(mq135Value, 0, 1023, 100, 0); // Mengkonversi nilai menjadi konsentrasi CO2
+  // Menghitung konsentrasi O2 dan CO2 dalam ppm berdasarkan tegangan yang diberikan sensor
+  float voltage = sensorValue * (5.0 / 1023.0);        // Mengubah nilai ADC menjadi tegangan (0-5V)
+  float O2_ppm = 20.9 - ((voltage - 0.1) * 9.0 / 0.8); // Menghitung konsentrasi O2 dalam ppm (asumsi respons linier)
+  float CO2_ppm = 5000 * (voltage / 5.0);              // Menghitung konsentrasi CO2 dalam ppm (asumsi respons linier)
 
-  Serial.print("Konsentrasi O2: ");
-  Serial.print(o2Concentration);
-  Serial.println(" %");
-
-  Serial.print("Konsentrasi CO2: ");
-  Serial.print(co2Concentration);
-  Serial.println(" %");
-
-  if (co2Concentration > 1000)
-  {
-    Serial.println("Peringatan: Konsentrasi CO2 tinggi");
-    relay(1);   // menyalakan relay
-    lamprgb(1); // led merah
-  }
-  else
-  {
-    relay(0);   // mematikan relay
-    lamprgb(2); // led hijau
-  }
+  Serial.print("(MQ-135)Konsentrasi O2 (ppm): ");
+  Serial.println(O2_ppm);
+  Serial.print("(MQ-135)Konsentrasi CO2 (ppm): ");
+  Serial.println(CO2_ppm);
 
   delay(2000);
 }
 
 void readmq2()
 {
-  int mq2Value = analogRead(MQ2_PIN);
-  if (mq2Value > 100)
-  {
-    Serial.println("Deteksi Asap Rokok");
-    lamprgb(1);
-    // Lakukan tindakan atau tampilkan notifikasi sesuai kebutuhan Anda
-  }
+
+  int sensorValue = analogRead(MQ2_PIN); // Membaca nilai dari sensor MQ-2
+
+  // Menghitung estimasi konsentrasi gas dalam ppm
+  float RS_air = 10000.0;                              // Resistansi sensor di udara bersih (ohm)
+  float sensorVoltage = sensorValue * (5.0 / 1023.0);  // Mengubah nilai ADC menjadi tegangan (0-5V)
+  float RS_gas = ((5.0 / sensorVoltage) - 1) * RS_air; // Resistansi sensor saat terkena gas (ohm)
+  float ratio = RS_gas / RS_air;                       // Rasio resistansi
+  float ppm = pow(10, ((log10(ratio) - 2.63) / 1.27)); // Menghitung ppm menggunakan kurva kalibrasi
+
+  Serial.print("(MQ-2)Konsentrasi Gas: ");
+  Serial.print(ppm);
+  Serial.println(" ppm");
 }
 
 void loop()
@@ -133,4 +115,7 @@ void loop()
   qualityair();
   readmq2();
   readdht22();
+
+  Serial.println(" ");
+  Serial.println("=================================");
 }
