@@ -1,3 +1,7 @@
+#define BLYNK_TEMPLATE_ID "TMPL6pdX-iLuA"
+#define BLYNK_TEMPLATE_NAME "AQ Detector"
+#define BLYNK_AUTH_TOKEN "SIUH659_pjS3_L9ysLLK3VesKHJSCXSA"
+
 #include <Arduino.h>
 #include <DHT.h>
 #include <WiFiManager.h>
@@ -16,10 +20,58 @@
 #define MQ135_THRESHOLD_1 1000
 #define MQ2_Threshold 400
 
+// Change the virtual pins according the rooms
+#define VPIN_Text V0
+#define VPIN_Temperature V1
+#define VPIN_Humidity V2
+#define VPIN_SmokeDetector V3
+#define VPIN_AirQuality V4
+#define VPIN_Mode V5
+#define VPIN_Fan V6
+#define VPIN_Lamp V7
+
+// Relay and Mode State
+bool modeState = LOW; // Define integer to remember the mode
+bool fanState = LOW;
+bool lampState = LOW;
+
 int lpg_gas, co_gas, smoke_gas;
 MQ2 mq2(MQ2_PIN);
 
 DHT dht(DHT_PIN, DHT_TYPE);
+
+void checkBlynkStatus()
+{ // called every 2 seconds by SimpleTimer
+
+  bool isconnected = Blynk.connected();
+  if (isconnected == false)
+  {
+    wifiFlag = 1;
+    Serial.println("Blynk Not Connected");
+    digitalWrite(wifiLed, LOW);
+  }
+  if (isconnected == true)
+  {
+    wifiFlag = 0;
+    Serial.println(" Blynk IoT Connected ");
+    Blynk.virtualWrite(VPIN_Text, "Controlling and Monitoring Green House");
+  }
+  // display.display();
+  delay(1000);
+}
+
+BLYNK_CONNECTED()
+{
+  // update the latest state to the server
+  Blynk.virtualWrite(VPIN_Text, "TEST doang");
+  Blynk.syncVirtual(VPIN_Temperature, temperature);
+  Blynk.syncVirtual(VPIN_Humidity, humidity);
+  Blynk.syncVirtual(VPIN_AirQuality, airQ);
+  Blynk.syncVirtual(VPIN_SmokeDetector, airQ);
+  Blynk.virtualWrite(VPIN_Mode, modeState);
+  Blynk.virtualWrite(VPIN_Fan, fanState);
+  Blynk.virtualWrite(VPIN_Lamp, lampState);
+}
 
 void relay(int nilai)
 {
@@ -50,6 +102,9 @@ void readdht22()
   Serial.print("Kelembaban: ");
   Serial.print(humidity);
   Serial.println(" %");
+
+  Blynk.virtualWrite(VPIN_Temperature, temperature);
+  Blynk.virtualWrite(VPIN_Humidity, humidity);
 }
 
 void lamprgb(int led)
@@ -114,10 +169,12 @@ void qualityair()
   }
   Serial.print(MQ135_data); // analog data
   Serial.println(" PPM");   // Unit = part per million
+  Blynk.virtualWrite(VPIN_AirQuality, MQ135_data);
+
   delay(2000);
 }
 
-void readmq2()
+void smokedetector()
 {
 
   int sensorValue = analogRead(MQ2_PIN); // Membaca nilai dari sensor MQ-2
@@ -140,6 +197,8 @@ void readmq2()
   Serial.print("SMOKE:");
   Serial.print(smoke_gas);
   Serial.println(" PPM");
+
+  Blynk.virtualWrite(VPIN_SmokeDetector, smoke_gas);
   delay(1000);
 
   // Check whether it is greater than the threshold value
@@ -159,7 +218,7 @@ void readmq2()
 void loop()
 {
   qualityair();
-  readmq2();
+  smokedetector();
   readdht22();
 
   Serial.println(" ");
