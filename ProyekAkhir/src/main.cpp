@@ -23,8 +23,8 @@ char auth[] = BLYNK_AUTH_TOKEN;
 #define BUZZER_PIN 22  // pin Buzzer
 
 // threshold
-//#define MQ135_THRESHOLD_1 1000
-//int smokeThreshold = 200;
+// #define MQ135_THRESHOLD_1 1000
+// int smokeThreshold = 200;
 
 // Change the virtual pins according the rooms
 #define VPIN_Temperature V0
@@ -66,40 +66,30 @@ void checkBlynkStatus()
   // display.display();
   delay(1000);
 }
-
-BLYNK_CONNECTED()
+void notifikasi(int nilai1, int nilai2)
 {
-  // update the latest state to the server
-  Blynk.virtualWrite(VPIN_Judul, "TEST");
-  Blynk.syncVirtual(VPIN_Temperature, temperature);
-  Blynk.syncVirtual(VPIN_Humidity, humidity);
-  Blynk.syncVirtual(VPIN_AirQuality, airquality);
-  Blynk.syncVirtual(VPIN_SmokeDetector, smoke);
-  Blynk.syncVirtual(VPIN_Data, "USE LEVEL AQI");
-  Blynk.syncVirtual(VPIN_DataLevel, "Fresh");
-  Blynk.syncVirtual(VPIN_Red, red);
-  Blynk.syncVirtual(VPIN_Yellow, yellow);
-  Blynk.syncVirtual(VPIN_Green, green);
-}
-
-void notifikasi(int nilai1,int nilai2){
-  if(nilai1<35 && nilai2 < 1000){
+  if (nilai1 < 35 && nilai2 < 1000)
+  {
     Serial.print("Aman");
-     Blynk.virtualWrite(VPIN_Data, "OFF");
-  }else if((nilai1>=36 && nilai1<45) && (nilai2>=1001&&nilai2<1500)){
-      Serial.print("Siaga");
-      Blynk.virtualWrite(VPIN_Data, "ON");
-      digitalWrite(BUZZER_PIN, HIGH);
-      delay(500);
-      digitalWrite(BUZZER_PIN, HIGH);
-      delay(500);
-      digitalWrite(BUZZER_PIN, HIGH);
-      delay(500);
-  }else if(nilai1>=45 && nilai2>=1500){
-     Serial.print("Bahaya");
-     Blynk.virtualWrite(VPIN_Data, "ON");
-      digitalWrite(BUZZER_PIN, HIGH);
-      delay(5000);
+    Blynk.virtualWrite(VPIN_Data, "OFF");
+  }
+  else if ((nilai1 >= 36 && nilai1 < 45) && (nilai2 >= 1001 && nilai2 < 1500))
+  {
+    Serial.print("Siaga");
+    Blynk.virtualWrite(VPIN_Data, "ON");
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(500);
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(500);
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(500);
+  }
+  else if (nilai1 >= 45 && nilai2 >= 1500)
+  {
+    Serial.print("Bahaya");
+    Blynk.virtualWrite(VPIN_Data, "ON");
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(5000);
   }
 }
 
@@ -110,8 +100,8 @@ void smokedetector()
   int smokePPM = map(sensorValue, 0, 1023, 0, 1000);
   Serial.print("(MQ2)Konsentrasi Asap (ppm): ");
   Serial.println(smokePPM);
-  Blynk.virtualWrite(VPIN_SmokeDetector,smokePPM);
-  notifikasi(temperature,smokePPM);
+  Blynk.virtualWrite(VPIN_SmokeDetector, smokePPM);
+  notifikasi(temperature, smokePPM);
 }
 
 void readdht22()
@@ -128,17 +118,19 @@ void readdht22()
   Serial.print("Kelembaban: ");
   Serial.print(humidity);
   Serial.println(" %");
-  
+
   Blynk.virtualWrite(VPIN_Temperature, temperature);
   Blynk.virtualWrite(VPIN_Humidity, humidity);
 }
 
-void lamprgb(int led) {
+void lamprgb(int led)
+{
   digitalWrite(RED_PIN, LOW);
   digitalWrite(GREEN_PIN, LOW);
   digitalWrite(BLUE_PIN, LOW);
-  
-  if (led > 0 && led <= 50) {
+
+  if (led > 0 && led <= 50)
+  {
     digitalWrite(GREEN_PIN, HIGH);
     digitalWrite(BLUE_PIN, LOW);
     digitalWrite(RED_PIN, LOW);
@@ -146,7 +138,8 @@ void lamprgb(int led) {
     Blynk.virtualWrite(VPIN_Yellow, 0);
     Blynk.virtualWrite(VPIN_Red, 0);
   }
-  else if (led >= 51 && led <= 150) {
+  else if (led >= 51 && led <= 150)
+  {
     digitalWrite(GREEN_PIN, LOW);
     digitalWrite(BLUE_PIN, LOW);
     digitalWrite(RED_PIN, HIGH);
@@ -154,7 +147,8 @@ void lamprgb(int led) {
     Blynk.virtualWrite(VPIN_Yellow, 1);
     Blynk.virtualWrite(VPIN_Red, 0);
   }
-  else if (led >= 151) {
+  else if (led >= 151)
+  {
     digitalWrite(GREEN_PIN, LOW);
     digitalWrite(BLUE_PIN, LOW);
     digitalWrite(RED_PIN, HIGH);
@@ -164,36 +158,43 @@ void lamprgb(int led) {
   }
 }
 
-void indexquality(int nilai) {
+void indexquality(int nilai)
+{
   String quality;
-  
-  if (nilai > 0 && nilai <= 50) {
+
+  if (nilai > 0 && nilai <= 50)
+  {
     quality = "Good";
-    
   }
-  else if (nilai >= 51 && nilai <= 100) {
+  else if (nilai >= 51 && nilai <= 100)
+  {
     quality = "Moderate";
   }
-  else if (nilai >= 101 && nilai <= 150) {
+  else if (nilai >= 101 && nilai <= 150)
+  {
     quality = "Unhealthy for Sensitive Groups";
   }
-  else if (nilai >= 151 && nilai <= 200) {
+  else if (nilai >= 151 && nilai <= 200)
+  {
     quality = "Unhealthy";
   }
-  else if (nilai >= 201 && nilai <= 300) {
+  else if (nilai >= 201 && nilai <= 300)
+  {
     quality = "Very Unhealthy";
   }
-  else if (nilai > 300) {
+  else if (nilai > 300)
+  {
     quality = "Hazardous";
   }
 
   Blynk.virtualWrite(VPIN_DataLevel, quality);
 }
 
-void qualityair() {
+void qualityair()
+{
   MQ135 gasSensor = MQ135(34);
   float air_quality = gasSensor.getPPM();
-  
+
   Serial.print("Air Quality: ");
   Serial.print(air_quality);
   Serial.println(" PPM");
@@ -202,7 +203,7 @@ void qualityair() {
   indexquality(air_quality);
   lamprgb(air_quality);
   Blynk.virtualWrite(VPIN_AirQuality, air_quality);
-  
+
   delay(1000);
 }
 
@@ -245,7 +246,6 @@ void loop()
   readdht22();     // sudah normal
   qualityair();    // sudah normal
   smokedetector(); // butuh analisa lagi
-
 
   Serial.println(" ");
   Serial.println("=================================");
