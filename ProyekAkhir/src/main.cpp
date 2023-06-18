@@ -1,4 +1,4 @@
-= #define BLYNK_TEMPLATE_ID "TMPL6pdX-iLuA"
+#define BLYNK_TEMPLATE_ID "TMPL6pdX-iLuA"
 #define BLYNK_TEMPLATE_NAME "AQ Detector"
 #define BLYNK_AUTH_TOKEN "SIUH659_pjS3_L9ysLLK3VesKHJSCXSA"
 
@@ -9,8 +9,9 @@
 #include <Preferences.h>
 #include <BlynkSimpleEsp32.h>
 #include "MQ135.h"
+#include <TinyGPSPlus.h>
 
-    char auth[] = BLYNK_AUTH_TOKEN;
+char auth[] = BLYNK_AUTH_TOKEN;
 
 #define MQ135_PIN 34   // Pin ADC untuk sensor MQ-135
 #define MQ2_PIN 35     // Pin ADC untuk sensor MQ-2
@@ -33,6 +34,8 @@ const int buzzerPin = 12;
 #define VPIN_Red V7
 #define VPIN_Yellow V8
 #define VPIN_Green V9
+#define VPIN_Latitude V10
+#define VPIN_Longtitude V11
 
 float temperature = 0;
 float humidity = 0;
@@ -40,8 +43,19 @@ float airquality = 0;
 float smoke = 0;
 int red, green, yellow = 0;
 
+WidgetMap myMap(V12);
+TinyGPSPlus gps;
+HardwareSerial SerialGPS(2);
+
+// unsigned int move_index;         // moving index, to be used later
+unsigned int move_index = 1; // fixed location for now
+
 BlynkTimer timer;
 DHT dht(DHT_PIN, DHT_TYPE);
+
+// Calibration values
+#define RZERO 50.10
+#define ADC_RESOLUTION 250
 
 void checkBlynkStatus()
 { // called every 2 seconds by SimpleTimer
@@ -210,6 +224,40 @@ void qualityair()
   Blynk.virtualWrite(VPIN_AirQuality, air_quality);
 }
 
+void checkGPS()
+{
+  if (gps.charsProcessed() < 4)
+  {
+    Serial.println(F("No GPS detected: check wiring."));
+  }
+}
+
+void location()
+{
+  while (SerialGPS.available() > 0)
+  {
+    if (gps.encode(SerialGPS.read()))
+    {
+      if (gps.location.isValid())
+      {
+        float latitude = (gps.location.lat()); // Storing the Lat. and Lon.
+        float longitude = (gps.location.lng());
+
+        Serial.print("LAT:  ");
+        Serial.println(latitude, 6); // float to x decimal places
+        Serial.print("LONG: ");
+        Serial.println(longitude, 6);
+        Blynk.virtualWrite(VPIN_Latitude, String(latitude, 6));
+        Blynk.virtualWrite(VPIN_Longtitude, String(longitude, 6));
+        myMap.location(move_index, latitude, longitude, "GPS_Location");
+      }
+
+      delay(1000);
+      Serial.println();
+    }
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -235,10 +283,15 @@ void setup()
   pinMode(GREEN_PIN, OUTPUT); // Mengatur pin hijau sebagai output
   pinMode(BLUE_PIN, OUTPUT);  // Mengatur pin biru sebagai output
 
+  SerialGPS.begin(9600, SERIAL_8N1, 5, 4);
+  Blynk.virtualWrite(V12, "clr");
+
   timer.setInterval(2000L, checkBlynkStatus);
   timer.setInterval(1000L, readdht22);
   timer.setInterval(1000L, qualityair);
   timer.setInterval(1000L, smokedetector);
+  timer.setInterval(2000L, location);
+  timer.setInterval(3000L, checkGPS);
   Blynk.config(auth);
 }
 
@@ -249,6 +302,13 @@ void loop()
   readdht22();     // sudah normal
   qualityair();    // sudah normal
   smokedetector(); // butuh analisa lagi
+
+  while (SerialGPS.available() > 0)
+  {
+    // sketch displays information every time a new sentence is correctly encoded.
+    if (gps.encode(SerialGPS.read()))
+      location();
+  }
   Serial.println(" ");
   Serial.println("=================================");
   delay(2000);
