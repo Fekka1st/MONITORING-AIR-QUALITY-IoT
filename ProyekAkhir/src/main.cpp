@@ -10,7 +10,7 @@
 #include <BlynkSimpleEsp32.h>
 #include "MQ135.h"
 
-    char auth[] = BLYNK_AUTH_TOKEN;
+char auth[] = BLYNK_AUTH_TOKEN;
 
 #define MQ135_PIN 34   // Pin ADC untuk sensor MQ-135
 #define MQ2_PIN 35     // Pin ADC untuk sensor MQ-2
@@ -60,17 +60,17 @@ void checkBlynkStatus()
   delay(1000);
 }
 
-void notifikasi(int temperature, int PPM)
+void notifikasi(int temperature, int smokePPM)
 {
 
-  if (temperature < 35 && PPM < 1300)
+  if (temperature < 35 && smokePPM < 1300)
   {
     Serial.println("Aman");
     Blynk.virtualWrite(VPIN_Data, "OFF");
     digitalWrite(buzzerPin, LOW); // no tone
     Serial.println("Buzzer OFF");
   }
-  else if ((temperature >= 36 && temperature < 45) || (PPM >= 1300 && PPM < 1500))
+  else if ((temperature >= 36 && temperature < 45) || (smokePPM >= 1300 && smokePPM < 1500))
   {
     Serial.print("Siaga");
     Serial.print("Buzzer ON");
@@ -84,7 +84,7 @@ void notifikasi(int temperature, int PPM)
     digitalWrite(buzzerPin, LOW); // no tone
     delay(1000);
   }
-  else if (temperature >= 45 && PPM >= 1500)
+  else if (temperature >= 45 && smokePPM >= 1500)
   {
     Serial.print("Bahaya");
     Serial.print("Buzzer ON");
