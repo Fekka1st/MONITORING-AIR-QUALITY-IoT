@@ -60,17 +60,17 @@ void checkBlynkStatus()
   delay(1000);
 }
 
-void notifikasi(int nilai1, int nilai2)
+void notifikasi(int temperature, int PPM)
 {
 
-  if (nilai1 < 35 && nilai2 < 1300)
+  if (temperature < 35 && PPM < 1300)
   {
     Serial.println("Aman");
     Blynk.virtualWrite(VPIN_Data, "OFF");
     digitalWrite(buzzerPin, LOW); // no tone
     Serial.println("Buzzer OFF");
   }
-  else if ((nilai1 >= 36 && nilai1 < 45) || (nilai2 >= 1300 && nilai2 < 1500))
+  else if ((temperature >= 36 && temperature < 45) || (PPM >= 1300 && PPM < 1500))
   {
     Serial.print("Siaga");
     Serial.print("Buzzer ON");
@@ -84,7 +84,7 @@ void notifikasi(int nilai1, int nilai2)
     digitalWrite(buzzerPin, LOW); // no tone
     delay(1000);
   }
-  else if (nilai1 >= 45 && nilai2 >= 1500)
+  else if (temperature >= 45 && PPM >= 1500)
   {
     Serial.print("Bahaya");
     Serial.print("Buzzer ON");
@@ -140,9 +140,9 @@ void lamprgb(int led)
   }
   else if (led >= 51 && led <= 150)
   {
-    digitalWrite(GREEN_PIN, LOW);
+    digitalWrite(GREEN_PIN, HIGH);
     digitalWrite(BLUE_PIN, LOW);
-    digitalWrite(RED_PIN, HIGH);
+    digitalWrite(RED_PIN, HIGH); // kuning
     Blynk.virtualWrite(VPIN_Green, 0);
     Blynk.virtualWrite(VPIN_Yellow, 1);
     Blynk.virtualWrite(VPIN_Red, 0);
@@ -158,31 +158,31 @@ void lamprgb(int led)
   }
 }
 
-void indexquality(int nilai)
+void indexquality(int Air_index)
 {
   String quality;
 
-  if (nilai >= 0 && nilai <= 50)
+  if (Air_index >= 0 && Air_index <= 50)
   {
     quality = "Good";
   }
-  else if (nilai >= 51 && nilai <= 100)
+  else if (Air_index >= 51 && Air_index <= 100)
   {
     quality = "Moderate";
   }
-  else if (nilai >= 101 && nilai <= 150)
+  else if (Air_index >= 101 && Air_index <= 150)
   {
     quality = "Unhealthy for Sensitive Groups";
   }
-  else if (nilai >= 151 && nilai <= 200)
+  else if (Air_index >= 151 && Air_index <= 200)
   {
     quality = "Unhealthy";
   }
-  else if (nilai >= 201 && nilai <= 300)
+  else if (Air_index >= 201 && Air_index <= 300)
   {
     quality = "Very Unhealthy";
   }
-  else if (nilai > 300)
+  else if (Air_index > 300)
   {
     quality = "Hazardous";
   }
