@@ -1,4 +1,4 @@
-#define BLYNK_TEMPLATE_ID "TMPL6pdX-iLuA"
+= #define BLYNK_TEMPLATE_ID "TMPL6pdX-iLuA"
 #define BLYNK_TEMPLATE_NAME "AQ Detector"
 #define BLYNK_AUTH_TOKEN "SIUH659_pjS3_L9ysLLK3VesKHJSCXSA"
 
@@ -9,9 +9,8 @@
 #include <Preferences.h>
 #include <BlynkSimpleEsp32.h>
 #include "MQ135.h"
-#include <MQ2.h>
 
-char auth[] = BLYNK_AUTH_TOKEN;
+    char auth[] = BLYNK_AUTH_TOKEN;
 
 #define MQ135_PIN 34   // Pin ADC untuk sensor MQ-135
 #define MQ2_PIN 35     // Pin ADC untuk sensor MQ-2
@@ -20,11 +19,8 @@ char auth[] = BLYNK_AUTH_TOKEN;
 #define RED_PIN 18     // Pin GPIO yang terhubung ke kaki merah LED RGB
 #define GREEN_PIN 19   // Pin GPIO yang terhubung ke kaki hijau LED RGB
 #define BLUE_PIN 21    // Pin GPIO yang terhubung ke kaki biru LED RGB
-#define BUZZER_PIN 22  // pin Buzzer
 
-// threshold
-// #define MQ135_THRESHOLD_1 1000
-// int smokeThreshold = 200;
+const int buzzerPin = 12;
 
 // Change the virtual pins according the rooms
 #define VPIN_Temperature V0
@@ -44,8 +40,6 @@ float airquality = 0;
 float smoke = 0;
 int red, green, yellow = 0;
 
-int lpg_gas, co_gas, smoke_gas;
-MQ2 mq2(MQ2_PIN);
 BlynkTimer timer;
 DHT dht(DHT_PIN, DHT_TYPE);
 
@@ -55,41 +49,48 @@ void checkBlynkStatus()
   bool isconnected = Blynk.connected();
   if (isconnected == false)
   {
-
     Serial.println("Blynk Not Connected");
   }
   if (isconnected == true)
   {
     Serial.println(" Blynk IoT Connected ");
-    Blynk.virtualWrite(VPIN_Judul, "Controlling and Monitoring At bus Stop");
+    Blynk.virtualWrite(VPIN_Judul, "Monitoring Air Quality and Smoke Emissions at Urban Bus Stops");
   }
   // display.display();
   delay(1000);
 }
+
 void notifikasi(int nilai1, int nilai2)
 {
-  if (nilai1 < 35 && nilai2 < 1000)
+
+  if (nilai1 < 35 && nilai2 < 1300)
   {
-    Serial.print("Aman");
+    Serial.println("Aman");
     Blynk.virtualWrite(VPIN_Data, "OFF");
+    digitalWrite(buzzerPin, LOW); // no tone
+    Serial.println("Buzzer OFF");
   }
-  else if ((nilai1 >= 36 && nilai1 < 45) && (nilai2 >= 1001 && nilai2 < 1500))
+  else if ((nilai1 >= 36 && nilai1 < 45) || (nilai2 >= 1300 && nilai2 < 1500))
   {
     Serial.print("Siaga");
-    Blynk.virtualWrite(VPIN_Data, "ON");
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(500);
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(500);
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(500);
+    Serial.print("Buzzer ON");
+    Blynk.virtualWrite(VPIN_Data, "ON"); // buzzer on
+    digitalWrite(buzzerPin, HIGH);       // send tone
+    delay(1000);
+    digitalWrite(buzzerPin, LOW); // no tone
+    delay(1000);
+    digitalWrite(buzzerPin, HIGH); // send tone
+    delay(1000);
+    digitalWrite(buzzerPin, LOW); // no tone
+    delay(1000);
   }
   else if (nilai1 >= 45 && nilai2 >= 1500)
   {
     Serial.print("Bahaya");
+    Serial.print("Buzzer ON");
     Blynk.virtualWrite(VPIN_Data, "ON");
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(5000);
+    digitalWrite(buzzerPin, HIGH); // send tone
+    delay(3000);
   }
 }
 
@@ -98,16 +99,15 @@ void smokedetector()
   float temperature = dht.readTemperature();
   int sensorValue = analogRead(MQ2_PIN); // Membaca nilai dari sensor MQ-2
   int smokePPM = map(sensorValue, 0, 1023, 0, 1000);
-  Serial.print("(MQ2)Konsentrasi Asap (ppm): ");
-  Serial.println(smokePPM);
-  Blynk.virtualWrite(VPIN_SmokeDetector, smokePPM);
+  Serial.print("(MQ2)Konsentrasi Asap : ");
+  Serial.print(smokePPM);
+  Serial.println(" PPM");
   notifikasi(temperature, smokePPM);
+  Blynk.virtualWrite(VPIN_SmokeDetector, smokePPM);
 }
 
 void readdht22()
 {
-  delay(2000); // Jeda 2 detik sebelum membaca sensor lagi
-
   float temperature = dht.readTemperature(); // Membaca suhu dalam derajat Celsius
   float humidity = dht.readHumidity();       // Membaca kelembaban dalam persen
 
@@ -129,7 +129,7 @@ void lamprgb(int led)
   digitalWrite(GREEN_PIN, LOW);
   digitalWrite(BLUE_PIN, LOW);
 
-  if (led > 0 && led <= 50)
+  if (led >= 0 && led <= 50)
   {
     digitalWrite(GREEN_PIN, HIGH);
     digitalWrite(BLUE_PIN, LOW);
@@ -162,7 +162,7 @@ void indexquality(int nilai)
 {
   String quality;
 
-  if (nilai > 0 && nilai <= 50)
+  if (nilai >= 0 && nilai <= 50)
   {
     quality = "Good";
   }
@@ -186,7 +186,9 @@ void indexquality(int nilai)
   {
     quality = "Hazardous";
   }
-
+  Serial.print("AQI : ");
+  Serial.print(quality);
+  Serial.println();
   Blynk.virtualWrite(VPIN_DataLevel, quality);
 }
 
@@ -195,21 +197,23 @@ void qualityair()
   MQ135 gasSensor = MQ135(34);
   float air_quality = gasSensor.getPPM();
 
+  int value = analogRead(34);
   Serial.print("Air Quality: ");
   Serial.print(air_quality);
   Serial.println(" PPM");
-  Serial.println();
+  Serial.print("Air Quality 2: ");
+  Serial.print(value, DEC);
+  Serial.println(" PPM");
 
   indexquality(air_quality);
   lamprgb(air_quality);
   Blynk.virtualWrite(VPIN_AirQuality, air_quality);
-
-  delay(1000);
 }
 
 void setup()
 {
   Serial.begin(115200);
+  pinMode(buzzerPin, OUTPUT);
   // cobain pake wifi manager
   WiFiManager wm;
   bool res;
@@ -224,7 +228,6 @@ void setup()
     Serial.print("connected...yeey:)");
   }
 
-  pinMode(BUZZER_PIN, OUTPUT);
   pinMode(MQ135_PIN, INPUT);  // Mengatur pin sensor MQ-135 sebagai input
   pinMode(MQ2_PIN, INPUT);    // Mengatur pin sensor MQ-2 sebagai input
   dht.begin();                // Inisialisasi sensor DHT22
@@ -246,7 +249,7 @@ void loop()
   readdht22();     // sudah normal
   qualityair();    // sudah normal
   smokedetector(); // butuh analisa lagi
-
   Serial.println(" ");
   Serial.println("=================================");
+  delay(2000);
 }
