@@ -9,16 +9,27 @@
 #include <Preferences.h>
 #include <BlynkSimpleEsp32.h>
 #include "MQ135.h"
+#include <TinyGPSPlus.h>
 
 char auth[] = BLYNK_AUTH_TOKEN;
 
-#define MQ135_PIN 34   // Pin ADC untuk sensor MQ-135
+#define MQ135_PIN 34
 #define MQ2_PIN 35     // Pin ADC untuk sensor MQ-2
 #define DHT_PIN 2      // Pin data sensor DHT22 terhubung ke GPIO 4
 #define DHT_TYPE DHT22 // Tipe sensor DHT22, ganti menjadi DHT11 jika menggunakan sensor DHT11
 #define RED_PIN 18     // Pin GPIO yang terhubung ke kaki merah LED RGB
 #define GREEN_PIN 19   // Pin GPIO yang terhubung ke kaki hijau LED RGB
 #define BLUE_PIN 21    // Pin GPIO yang terhubung ke kaki biru LED RGB
+
+/*#define calibration_definition
+#define placa "DOIT ESP32 DEVKIT V1"
+#define Voltage_Resolution 5
+#define MQ135_PIN  34 //Analog input 0 of your esp32
+#define placa "Arduino UNO"
+#define type "MQ-135" //MQ135
+#define ADC_Bit_Resolution 10 // For arduino UNO/MEGA/NANO
+#define RatioMQ135CleanAir 3.6//RS / R0 = 3.6 ppm
+*/
 
 const int buzzerPin = 12;
 
@@ -33,6 +44,8 @@ const int buzzerPin = 12;
 #define VPIN_Red V7
 #define VPIN_Yellow V8
 #define VPIN_Green V9
+#define VPIN_Latitude V10
+#define VPIN_Longtitude V11
 
 float temperature = 0;
 float humidity = 0;
@@ -40,8 +53,21 @@ float airquality = 0;
 float smoke = 0;
 int red, green, yellow = 0;
 
+WidgetMap myMap(V12);
+TinyGPSPlus gps;
+HardwareSerial SerialGPS(2);
+
+// unsigned int move_index;         // moving index, to be used later
+unsigned int move_index = 1; // fixed location for now
+
 BlynkTimer timer;
 DHT dht(DHT_PIN, DHT_TYPE);
+
+/*
+// Calibration values
+#define RZERO 50.10
+#define ADC_RESOLUTION 250
+*/
 
 void checkBlynkStatus()
 { // called every 2 seconds by SimpleTimer
@@ -60,17 +86,24 @@ void checkBlynkStatus()
   delay(1000);
 }
 
-void notifikasi(int temperature, int smokePPM)
+void smokedetector()
 {
+  float temperature = dht.readTemperature();
+  int sensorValue = analogRead(MQ2_PIN); // Membaca nilai dari sensor MQ-2
+  int smokePPM = map(sensorValue, 0, 1023, 0, 1000);
+  Serial.print("(MQ2)Konsentrasi Asap : ");
+  Serial.print(smokePPM);
+  Serial.println(" PPM");
+  Blynk.virtualWrite(VPIN_SmokeDetector, smokePPM);
 
-  if (temperature < 35 && smokePPM < 1300)
+  if (temperature < 35 && smokePPM < 1400)
   {
     Serial.println("Aman");
     Blynk.virtualWrite(VPIN_Data, "OFF");
     digitalWrite(buzzerPin, LOW); // no tone
     Serial.println("Buzzer OFF");
   }
-  else if ((temperature >= 36 && temperature < 45) || (smokePPM >= 1300 && smokePPM < 1500))
+  else if ((temperature >= 36 && temperature < 45) || smokePPM >= 1400)
   {
     Serial.print("Siaga");
     Serial.print("Buzzer ON");
@@ -83,6 +116,7 @@ void notifikasi(int temperature, int smokePPM)
     delay(1000);
     digitalWrite(buzzerPin, LOW); // no tone
     delay(1000);
+    Blynk.logEvent("standby", "standby condition!!!");
   }
   else if (temperature >= 45 && smokePPM >= 1500)
   {
@@ -91,19 +125,8 @@ void notifikasi(int temperature, int smokePPM)
     Blynk.virtualWrite(VPIN_Data, "ON");
     digitalWrite(buzzerPin, HIGH); // send tone
     delay(3000);
+    Blynk.logEvent("hazard", "hazard condition!!!");
   }
-}
-
-void smokedetector()
-{
-  float temperature = dht.readTemperature();
-  int sensorValue = analogRead(MQ2_PIN); // Membaca nilai dari sensor MQ-2
-  int smokePPM = map(sensorValue, 0, 1023, 0, 1000);
-  Serial.print("(MQ2)Konsentrasi Asap : ");
-  Serial.print(smokePPM);
-  Serial.println(" PPM");
-  notifikasi(temperature, smokePPM);
-  Blynk.virtualWrite(VPIN_SmokeDetector, smokePPM);
 }
 
 void readdht22()
@@ -165,26 +188,32 @@ void indexquality(int Air_index)
   if (Air_index >= 0 && Air_index <= 50)
   {
     quality = "Good";
+    Blynk.logEvent("good", "AQI category (Good)");
   }
   else if (Air_index >= 51 && Air_index <= 100)
   {
     quality = "Moderate";
+    Blynk.logEvent("moderate", "AQI category (Moderate)");
   }
   else if (Air_index >= 101 && Air_index <= 150)
   {
     quality = "Unhealthy for Sensitive Groups";
+    Blynk.logEvent("unhealty_1", "AQI category (Unhealthy for Sensitive Groups)");
   }
   else if (Air_index >= 151 && Air_index <= 200)
   {
     quality = "Unhealthy";
+    Blynk.logEvent("unhealty_2", "AQI category (Unhealthy)");
   }
   else if (Air_index >= 201 && Air_index <= 300)
   {
     quality = "Very Unhealthy";
+    Blynk.logEvent("unhealty_2", "AQI category (Very Unhealthy)");
   }
   else if (Air_index > 300)
   {
     quality = "Hazardous";
+    Blynk.logEvent("hazardous", "AQI category (Hazardous)");
   }
   Serial.print("AQI : ");
   Serial.print(quality);
@@ -205,9 +234,43 @@ void qualityair()
   Serial.print(value, DEC);
   Serial.println(" PPM");
 
-  indexquality(air_quality);
-  lamprgb(air_quality);
-  Blynk.virtualWrite(VPIN_AirQuality, air_quality);
+  indexquality(value);
+  lamprgb(value);
+  Blynk.virtualWrite(VPIN_AirQuality, value);
+}
+
+void checkGPS()
+{
+  if (gps.charsProcessed() < 4)
+  {
+    Serial.println(F("No GPS detected: check wiring."));
+  }
+}
+
+void location()
+{
+  while (SerialGPS.available() > 0)
+  {
+    if (gps.encode(SerialGPS.read()))
+    {
+      if (gps.location.isValid())
+      {
+        float latitude = (gps.location.lat()); // Storing the Lat. and Lon.
+        float longitude = (gps.location.lng());
+
+        Serial.print("LAT:  ");
+        Serial.println(latitude, 6); // float to x decimal places
+        Serial.print("LONG: ");
+        Serial.println(longitude, 6);
+        Blynk.virtualWrite(VPIN_Latitude, String(latitude, 6));
+        Blynk.virtualWrite(VPIN_Longtitude, String(longitude, 6));
+        myMap.location(move_index, latitude, longitude, "GPS_Location");
+      }
+
+      delay(1000);
+      Serial.println();
+    }
+  }
 }
 
 void setup()
@@ -217,7 +280,7 @@ void setup()
   // cobain pake wifi manager
   WiFiManager wm;
   bool res;
-  res = wm.autoConnect("Reconnect", "12345678"); // password protected ap
+  res = wm.autoConnect("ConnectXAIR","123456789"); // password protected ap
   if (!res)
   {
     Serial.println("Failed to connect");
@@ -235,10 +298,15 @@ void setup()
   pinMode(GREEN_PIN, OUTPUT); // Mengatur pin hijau sebagai output
   pinMode(BLUE_PIN, OUTPUT);  // Mengatur pin biru sebagai output
 
+  SerialGPS.begin(9600, SERIAL_8N1, 5, 4);
+  Blynk.virtualWrite(V12, "clr");
+
   timer.setInterval(2000L, checkBlynkStatus);
   timer.setInterval(1000L, readdht22);
   timer.setInterval(1000L, qualityair);
   timer.setInterval(1000L, smokedetector);
+  timer.setInterval(2000L, location);
+  timer.setInterval(3000L, checkGPS);
   Blynk.config(auth);
 }
 
@@ -246,9 +314,11 @@ void loop()
 {
   Blynk.run();
   timer.run();
-  readdht22();     // sudah normal
-  qualityair();    // sudah normal
-  smokedetector(); // butuh analisa lagi
+  readdht22();     // sudah Normal
+  qualityair();    // sudah Normal
+  smokedetector(); // Sudah Normal
+  location();
+
   Serial.println(" ");
   Serial.println("=================================");
   delay(2000);
