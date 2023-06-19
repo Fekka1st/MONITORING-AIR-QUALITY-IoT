@@ -1,5 +1,6 @@
-# Monitoring And Controlling at Bus Stops
-_Proyek ini dibuat untuk memenuhi tugas akhir proyek MSIB pada Mitra MySkill_
+# Monitoring Air Quality and Smoke Emissions at Urban Bus Stops
+_Ini adalah sebuah proyek untuk memonitoring kualitas udara di halte bus dengan menggunakan perangkat yaitu MQ135 dan juga MQ2 untuk mendeteksi ASAP_
+_Sistem ini sudah integrasi dengan bylnk jadi kita bisa memantau melalui aplikasi tersebut untuk melihat data_
 <h1>Anggota:</h1>
 <h4>1.Hamdi Sholahudin</h4>
 <h4>2.Hendri Hananta Wahyu Wibowo</h4>
@@ -10,12 +11,26 @@ _Proyek ini dibuat untuk memenuhi tugas akhir proyek MSIB pada Mitra MySkill_
 ## ScreenShoot Proyek :
 
 ## Fitur :
+- Mendeteksi ASAP
+- Mendeteksi Kualitas Udara
+- Mendeteksi Temperatur dan juga Kelembapan
+- Ada Respon Suara jika terjadi asap atau kebakaran
+- Ada led indikator untuk melihat kualitas udara
 
 ## Requirements Prangkat :
+- MQ2
+- MQ135
+- DHT22
+- ESP32
+- Buzzer
+- LED RGB
 
 ## Teknologi Yang digunakan:
-
+- Blynk
+- Arduino Code
+- 
 ## Contact :
-
+- @fekka_1st (Instagram)
+- 
 
 
