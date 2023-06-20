@@ -12,7 +12,7 @@ _Sistem ini sudah integrasi dengan bylnk jadi kita bisa memantau melalui aplikas
 <h3>Dashboard Blynk</h3>
 <p align="center"><a href="#" target="_blank"><img src="./Design/asset/gambar.png" width="1000"></a></p>
 <h3>Mobile Blynk</h3>
-<p align="center"><a href="#" target="_blank"><img src="./Design/asset/gambar.png" width="1000"></a></p>
+<p align="center"><a href="#" target="_blank"><img src="./Design/asset/mobile.jpeg" width="1000"></a></p>
 
 <h3>Device Monitoring</h3>
 <p align="center"><a href="#" target="_blank"><img src="./Design/asset/gambar (7).jpg" width="1000"></a></p>
