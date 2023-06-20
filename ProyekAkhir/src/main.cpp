@@ -57,6 +57,7 @@ WidgetMap myMap(V12);
 TinyGPSPlus gps;
 HardwareSerial SerialGPS(2);
 
+
 // unsigned int move_index;         // moving index, to be used later
 unsigned int move_index = 1; // fixed location for now
 
@@ -264,7 +265,7 @@ void location()
         Serial.println(longitude, 6);
         Blynk.virtualWrite(VPIN_Latitude, String(latitude, 6));
         Blynk.virtualWrite(VPIN_Longtitude, String(longitude, 6));
-        myMap.location(move_index, latitude, longitude, "GPS_Location");
+        Blynk.virtualWrite(V12,longitude,latitude);
       }
 
       delay(1000);
@@ -273,6 +274,7 @@ void location()
   }
 }
 
+static const uint32_t GPSBaud = 9600;
 void setup()
 {
   Serial.begin(115200);
@@ -280,7 +282,7 @@ void setup()
   // cobain pake wifi manager
   WiFiManager wm;
   bool res;
-  res = wm.autoConnect("ConnectXAIR","123456789"); // password protected ap
+  res = wm.autoConnect("ConnectXAIR", "123456789"); // password protected ap
   if (!res)
   {
     Serial.println("Failed to connect");
@@ -298,8 +300,11 @@ void setup()
   pinMode(GREEN_PIN, OUTPUT); // Mengatur pin hijau sebagai output
   pinMode(BLUE_PIN, OUTPUT);  // Mengatur pin biru sebagai output
 
+
+
   SerialGPS.begin(9600, SERIAL_8N1, 5, 4);
   Blynk.virtualWrite(V12, "clr");
+  
 
   timer.setInterval(2000L, checkBlynkStatus);
   timer.setInterval(1000L, readdht22);
